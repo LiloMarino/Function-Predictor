@@ -1,69 +1,117 @@
 from __future__ import annotations
 
+from typing import overload
+
 import numpy as np
 
-from . import FunctionDefinition
-from .utils import unpack_params
+from . import FunctionDefinition, Generator
 
 
-def linear(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b = unpack_params(params, 2, "linear")
-    x_values = np.asarray(x, dtype=float)
-    return a * x_values + b
+@overload
+def linear(*, a: float, b: float) -> Generator: ...
 
 
-def quadratic(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b, c = unpack_params(params, 3, "quadratic")
-    x_values = np.asarray(x, dtype=float)
-    return a * x_values**2 + b * x_values + c
+@overload
+def linear(**params: float) -> Generator: ...
 
 
-def cubic(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b, c, d = unpack_params(params, 4, "cubic")
-    x_values = np.asarray(x, dtype=float)
-    return a * x_values**3 + b * x_values**2 + c * x_values + d
+def linear(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        return a * x_values + b
+
+    return f
 
 
-def quartic(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b, c, d, e = unpack_params(params, 5, "quartic")
-    x_values = np.asarray(x, dtype=float)
-    return a * x_values**4 + b * x_values**3 + c * x_values**2 + d * x_values + e
+@overload
+def quadratic(*, a: float, b: float, c: float) -> Generator: ...
 
 
-LINEAR_PARAMS = {"a": (-5.0, 5.0), "b": (-5.0, 5.0)}
-QUADRATIC_PARAMS = {"a": (-2.0, 2.0), "b": (-5.0, 5.0), "c": (-5.0, 5.0)}
-CUBIC_PARAMS = {"a": (-1.0, 1.0), "b": (-3.0, 3.0), "c": (-5.0, 5.0), "d": (-5.0, 5.0)}
-QUARTIC_PARAMS = {
-    "a": (-0.5, 0.5),
-    "b": (-2.0, 2.0),
-    "c": (-3.0, 3.0),
-    "d": (-5.0, 5.0),
-    "e": (-5.0, 5.0),
-}
+@overload
+def quadratic(**params: float) -> Generator: ...
 
-FUNCTIONS = [
+
+def quadratic(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        return a * x_values**2 + b * x_values + c
+
+    return f
+
+
+@overload
+def cubic(*, a: float, b: float, c: float, d: float) -> Generator: ...
+
+
+@overload
+def cubic(**params: float) -> Generator: ...
+
+
+def cubic(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+    d = float(params["d"])
+
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        return a * x_values**3 + b * x_values**2 + c * x_values + d
+
+    return f
+
+
+@overload
+def quartic(*, a: float, b: float, c: float, d: float, e: float) -> Generator: ...
+
+
+@overload
+def quartic(**params: float) -> Generator: ...
+
+
+def quartic(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+    d = float(params["d"])
+    e = float(params["e"])
+
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        return a * x_values**4 + b * x_values**3 + c * x_values**2 + d * x_values + e
+
+    return f
+
+
+POLYNOMIAL_FUNCTIONS = [
     FunctionDefinition(
         name="linear",
         category="polynomial",
-        generator=linear,
-        params=LINEAR_PARAMS,
+        factory=linear,
+        parameter_names=("a", "b"),
     ),
     FunctionDefinition(
         name="quadratic",
         category="polynomial",
-        generator=quadratic,
-        params=QUADRATIC_PARAMS,
+        factory=quadratic,
+        parameter_names=("a", "b", "c"),
     ),
     FunctionDefinition(
         name="cubic",
         category="polynomial",
-        generator=cubic,
-        params=CUBIC_PARAMS,
+        factory=cubic,
+        parameter_names=("a", "b", "c", "d"),
     ),
     FunctionDefinition(
         name="quartic",
         category="polynomial",
-        generator=quartic,
-        params=QUARTIC_PARAMS,
+        factory=quartic,
+        parameter_names=("a", "b", "c", "d", "e"),
     ),
 ]

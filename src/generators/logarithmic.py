@@ -1,32 +1,41 @@
 from __future__ import annotations
 
+from typing import overload
+
 import numpy as np
 
-from . import FunctionDefinition
-from .utils import unpack_params
+from . import FunctionDefinition, Generator
 
 
-def logarithmic(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b, c, d = unpack_params(params, 4, "logarithmic")
-    x_values = np.asarray(x, dtype=float)
-    inner = b * x_values + c
-    if np.any(inner <= 0):
-        raise ValueError("logarithmic domain error: b * x + c must be > 0")
-    return a * np.log(inner) + d
+@overload
+def logarithmic(*, a: float, b: float, c: float, d: float) -> Generator: ...
 
 
-LOGARITHMIC_PARAMS = {
-    "a": (-5.0, 5.0),
-    "b": (0.1, 3.0),
-    "c": (0.1, 5.0),
-    "d": (-5.0, 5.0),
-}
+@overload
+def logarithmic(**params: float) -> Generator: ...
 
-FUNCTIONS = [
+
+def logarithmic(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+    d = float(params["d"])
+
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        inner = b * x_values + c
+        if np.any(inner <= 0):
+            raise ValueError("logarithmic domain error: b * x + c must be > 0")
+        return a * np.log(inner) + d
+
+    return f
+
+
+LOGARITHMIC_FUNCTIONS = [
     FunctionDefinition(
         name="logarithmic",
         category="logarithmic",
-        generator=logarithmic,
-        params=LOGARITHMIC_PARAMS,
+        factory=logarithmic,
+        parameter_names=("a", "b", "c", "d"),
     )
 ]

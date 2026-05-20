@@ -1,24 +1,37 @@
 from __future__ import annotations
 
+from typing import overload
+
 import numpy as np
 
-from . import FunctionDefinition
-from .utils import unpack_params
+from . import FunctionDefinition, Generator
 
 
-def exponential(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b, c = unpack_params(params, 3, "exponential")
-    x_values = np.asarray(x, dtype=float)
-    return a * np.exp(b * x_values) + c
+@overload
+def exponential(*, a: float, b: float, c: float) -> Generator: ...
 
 
-EXPONENTIAL_PARAMS = {"a": (-5.0, 5.0), "b": (-2.0, 2.0), "c": (-5.0, 5.0)}
+@overload
+def exponential(**params: float) -> Generator: ...
 
-FUNCTIONS = [
+
+def exponential(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        return a * np.exp(b * x_values) + c
+
+    return f
+
+
+EXPONENTIAL_FUNCTIONS = [
     FunctionDefinition(
         name="exponential",
         category="exponential",
-        generator=exponential,
-        params=EXPONENTIAL_PARAMS,
+        factory=exponential,
+        parameter_names=("a", "b", "c"),
     )
 ]

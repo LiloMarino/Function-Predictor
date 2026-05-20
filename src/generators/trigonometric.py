@@ -1,41 +1,65 @@
 from __future__ import annotations
 
+from typing import overload
+
 import numpy as np
 
-from . import FunctionDefinition
-from .utils import unpack_params
+from . import FunctionDefinition, Generator
 
 
-def sine(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b, c, d = unpack_params(params, 4, "sine")
-    x_values = np.asarray(x, dtype=float)
-    return a * np.sin(b * x_values + c) + d
+@overload
+def sine(*, a: float, b: float, c: float, d: float) -> Generator: ...
 
 
-def cosine(x: np.ndarray | float, *params: float) -> np.ndarray:
-    a, b, c, d = unpack_params(params, 4, "cosine")
-    x_values = np.asarray(x, dtype=float)
-    return a * np.cos(b * x_values + c) + d
+@overload
+def sine(**params: float) -> Generator: ...
 
 
-TRIGONOMETRIC_PARAMS = {
-    "a": (-5.0, 5.0),
-    "b": (0.1, 5.0),
-    "c": (-np.pi, np.pi),
-    "d": (-5.0, 5.0),
-}
+def sine(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+    d = float(params["d"])
 
-FUNCTIONS = [
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        return a * np.sin(b * x_values + c) + d
+
+    return f
+
+
+@overload
+def cosine(*, a: float, b: float, c: float, d: float) -> Generator: ...
+
+
+@overload
+def cosine(**params: float) -> Generator: ...
+
+
+def cosine(**params: float) -> Generator:
+    a = float(params["a"])
+    b = float(params["b"])
+    c = float(params["c"])
+    d = float(params["d"])
+
+    def f(x: np.ndarray | float) -> np.ndarray:
+        x_values = np.asarray(x, dtype=float)
+        return a * np.cos(b * x_values + c) + d
+
+    return f
+
+
+TRIGONOMETRIC_FUNCTIONS = [
     FunctionDefinition(
         name="sine",
         category="trigonometric",
-        generator=sine,
-        params=TRIGONOMETRIC_PARAMS,
+        factory=sine,
+        parameter_names=("a", "b", "c", "d"),
     ),
     FunctionDefinition(
         name="cosine",
         category="trigonometric",
-        generator=cosine,
-        params=TRIGONOMETRIC_PARAMS,
+        factory=cosine,
+        parameter_names=("a", "b", "c", "d"),
     ),
 ]
