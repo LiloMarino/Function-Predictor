@@ -10,15 +10,76 @@ from typing import Callable
 import neat
 
 
+def _strip_config_comments(text: str) -> str:
+    """Remove comentarios de um arquivo INI sem tocar nos valores."""
+    cleaned_lines: list[str] = []
+    for raw_line in text.splitlines():
+        stripped = raw_line.lstrip()
+        if not stripped:
+            cleaned_lines.append("")
+            continue
+        if stripped.startswith("#") or stripped.startswith(";"):
+            continue
+
+        cut_at: int | None = None
+        for idx, ch in enumerate(raw_line):
+            if ch in "#;" and (idx == 0 or raw_line[idx - 1].isspace()):
+                cut_at = idx
+                break
+
+        line = raw_line
+        if cut_at is not None:
+            line = raw_line[:cut_at].rstrip()
+            if not line:
+                continue
+
+        cleaned_lines.append(line)
+
+    return "\n".join(cleaned_lines) + "\n"
+
+
+def _ensure_ansi_config(source_path: Path) -> Path:
+    """Gera uma copia ANSI (cp1252) sem comentarios para evitar decode no Windows."""
+    ansi_path = source_path.with_name(source_path.name + ".ansi")
+    try:
+        if (
+            ansi_path.exists()
+            and ansi_path.stat().st_mtime >= source_path.stat().st_mtime
+        ):
+            return ansi_path
+    except OSError:
+        pass
+
+    try:
+        text = source_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        text = source_path.read_text(encoding="latin-1")
+
+    cleaned = _strip_config_comments(text)
+    ansi_path.write_text(cleaned, encoding="cp1252", errors="replace")
+    return ansi_path
+
+
 def load_config(config_path: str | Path = "config/neat.cfg") -> neat.Config:
-    """Carrega o arquivo de configuração do NEAT."""
-    return neat.Config(
-        neat.DefaultGenome,
-        neat.DefaultReproduction,
-        neat.DefaultSpeciesSet,
-        neat.DefaultStagnation,
-        str(config_path),
-    )
+    """Carrega o arquivo de configuracao do NEAT."""
+    config_path = Path(config_path)
+    try:
+        return neat.Config(
+            neat.DefaultGenome,
+            neat.DefaultReproduction,
+            neat.DefaultSpeciesSet,
+            neat.DefaultStagnation,
+            str(config_path),
+        )
+    except UnicodeDecodeError:
+        ansi_path = _ensure_ansi_config(config_path)
+        return neat.Config(
+            neat.DefaultGenome,
+            neat.DefaultReproduction,
+            neat.DefaultSpeciesSet,
+            neat.DefaultStagnation,
+            str(ansi_path),
+        )
 
 
 def create_population(config: neat.Config) -> neat.Population:
