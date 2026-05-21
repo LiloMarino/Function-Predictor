@@ -1,0 +1,330 @@
+"""Gera (ou regenera) o arquivo de configuração do NEAT com todos os
+parâmetros documentados e os valores padrão para este projeto.
+
+Uso:
+    python scripts/generate_config.py
+    python scripts/generate_config.py --output config/neat.cfg
+    python scripts/generate_config.py --output minha_config.cfg
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+CONFIG_TEMPLATE = """\
+# ==============================================================================
+# NEAT Configuration — Function Predictor
+# ==============================================================================
+#
+# Tarefa: dado uma janela de N valores consecutivos y[i..i+N-1] de uma
+# sequência desconhecida, a rede prevê y[i+N].
+#
+# Para regenerar este arquivo com os defaults documentados, execute:
+#   python scripts/generate_config.py --output config/neat.cfg
+#
+# Referência: https://neat-python.readthedocs.io/en/latest/config_file.html
+# ==============================================================================
+
+
+[NEAT]
+
+# Critério usado para determinar o "melhor" fitness geral da população:
+#   max  → o maior fitness individual (mais comum — quando maior é melhor)
+#   min  → o menor fitness individual (quando menor é melhor)
+#   mean → a média da população
+fitness_criterion     = max
+
+# Treino para quando o melhor fitness atingir este valor.
+# Com fitness = 1 / (1 + MSE), o valor 1.0 é o limite teórico (MSE=0).
+# Use um valor ligeiramente abaixo para parada antecipada real.
+# Aumente muito (ex: 9999) para desabilitar parada antecipada.
+fitness_threshold     = 0.97
+
+# Número de indivíduos na população por geração.
+# Mais = mais diversidade genética, mas cada geração é mais lenta.
+pop_size              = 200
+
+# Se True: quando todas as espécies estagnarem e forem extintas,
+# uma nova população aleatória é criada em vez de parar o treino.
+reset_on_extinction   = False
+
+# Se True: o NEAT nunca para com base no fitness_threshold.
+# Útil para rodar exatamente n gerações e analisar a curva completa.
+no_fitness_termination = False
+
+
+# ==============================================================================
+[DefaultGenome]
+# ==============================================================================
+
+
+# ------------------------------------------------------------------------------
+# FUNÇÃO DE ATIVAÇÃO DOS NÓS
+# ------------------------------------------------------------------------------
+# Funções disponíveis no neat-python:
+#   sigmoid   → 1 / (1 + exp(-x))         range: (0, 1)
+#   tanh      → tanh(x)                    range: (-1, 1)   ← bom para regressão
+#   relu      → max(0, x)                  range: [0, ∞)
+#   elu       → x se x≥0, α(exp(x)-1) cc  range: (-α, ∞)
+#   lelu      → relu com leak 0.005
+#   selu      → scaled ELU (auto-normaliza)
+#   softplus  → log(1 + exp(x))
+#   identity  → x                          (linear, sem ativação)
+#   clamped   → clamp(x, -1, 1)
+#   log       → log(max(x, 1e-7))
+#   exp       → exp(x)
+#   hat       → max(0, 1 - |x|)            (triangular)
+#   sin       → sin(x)
+#   gauss     → exp(-x²)
+#   square    → x²
+#   cube      → x³
+#   abs       → |x|
+#
+# activation_default:     função inicial para novos nós
+# activation_mutate_rate: probabilidade por nó de trocar de função por geração
+# activation_options:     lista de funções permitidas (separadas por espaço)
+#   → o NEAT pode mutar entre essas opções se activation_mutate_rate > 0
+activation_default      = tanh
+activation_mutate_rate  = 0.05
+activation_options      = tanh relu sigmoid
+
+# ------------------------------------------------------------------------------
+# FUNÇÃO DE AGREGAÇÃO DOS NÓS
+# ------------------------------------------------------------------------------
+# Como o nó combina todas as suas entradas antes de aplicar a ativação.
+# Disponíveis: sum, product, min, max, mean, median, maxabs
+#
+# sum     → soma dos pesos*entradas  (padrão — equivale à rede neural clássica)
+# product → produto                  (útil para interações multiplicativas)
+# mean    → média
+# max     → máximo
+# min     → mínimo
+# maxabs  → valor de maior magnitude
+#
+# aggregation_mutate_rate: 0 = não muta (mantém sum para todas as gerações)
+aggregation_default     = sum
+aggregation_mutate_rate = 0.0
+aggregation_options     = sum
+
+# ------------------------------------------------------------------------------
+# BIAS DE CADA NÓ
+# ------------------------------------------------------------------------------
+# Cada nó tem um bias que é somado às entradas ponderadas antes da ativação:
+#   output = activation(bias + response * Σ(weight_i * input_i))
+#
+# bias_init_mean / bias_init_stdev: distribuição inicial do bias
+# bias_init_type: 'gaussian' ou 'uniform'
+# bias_min_value / bias_max_value: limites hard do bias (clamped após mutação)
+# bias_mutate_power:   desvio padrão do passo de mutação gaussiana
+# bias_mutate_rate:    probabilidade de o bias ser perturbado por geração
+# bias_replace_rate:   probabilidade de o bias ser substituído por valor aleatório novo
+bias_init_mean          = 0.0
+bias_init_stdev         = 1.0
+bias_init_type          = gaussian
+bias_max_value          = 30.0
+bias_min_value          = -30.0
+bias_mutate_power       = 0.5
+bias_mutate_rate        = 0.7
+bias_replace_rate       = 0.1
+
+# ------------------------------------------------------------------------------
+# COMPATIBILIDADE GENÔMICA (para especiação)
+# ------------------------------------------------------------------------------
+# A distância genética entre dois genomas determina se eles ficam na mesma espécie:
+#
+#   distância = (disjoint_coeff × genes_disjuntos)
+#             + (weight_coeff   × diferença_média_de_pesos)
+#
+# compatibility_disjoint_coefficient: penalidade por diferenças estruturais
+#   (genes presentes em um genoma mas não no outro)
+# compatibility_weight_coefficient:   penalidade por diferenças de peso
+#   (genes presentes em ambos, mas com pesos diferentes)
+compatibility_disjoint_coefficient = 1.0
+compatibility_weight_coefficient   = 0.5
+
+# ------------------------------------------------------------------------------
+# ADIÇÃO / REMOÇÃO DE CONEXÕES
+# ------------------------------------------------------------------------------
+# Probabilidades aplicadas a cada genoma a cada geração:
+# conn_add_prob:    chance de adicionar uma nova conexão aleatória
+# conn_delete_prob: chance de remover uma conexão existente
+conn_add_prob           = 0.5
+conn_delete_prob        = 0.5
+
+# ------------------------------------------------------------------------------
+# HABILITAÇÃO / DESABILITAÇÃO DE CONEXÕES
+# ------------------------------------------------------------------------------
+# Conexões podem ser desabilitadas (mas não removidas) — o gene fica "silencioso".
+#
+# enabled_default:          novas conexões começam habilitadas (True) ou não (False)
+# enabled_mutate_rate:      probabilidade de inverter o estado enabled/disabled
+# enabled_rate_to_false_add: taxa extra de desabilitação ao ADICIONAR conexão
+# enabled_rate_to_true_add:  taxa extra de habilitação ao ADICIONAR conexão
+enabled_default           = True
+enabled_mutate_rate       = 0.01
+enabled_rate_to_false_add = 0.0
+enabled_rate_to_true_add  = 0.0
+
+# ------------------------------------------------------------------------------
+# TOPOLOGIA DA REDE
+# ------------------------------------------------------------------------------
+# feed_forward: True = somente conexões adiante (sem recorrência)
+#               False = conexões recorrentes permitidas
+#
+# initial_connection: como o genoma inicial é conectado:
+#   unconnected          → sem conexões (começa mínimo)
+#   fs_neat_nohidden     → uma conexão de input aleatório para cada output
+#   fs_neat_hidden       → igual, mas passando por hidden
+#   full_nodirect        → todos inputs → hidden, hidden → outputs
+#                          (sem conexão direta input→output)
+#   full_direct          → todos inputs → hidden → outputs
+#                          + conexões diretas input→output
+#   partial_nodirect 0.5 → como full_nodirect mas com prob. 0.5 por conexão
+#   partial_direct 0.5   → como full_direct mas com prob. 0.5 por conexão
+feed_forward            = True
+initial_connection      = full_nodirect
+
+# ------------------------------------------------------------------------------
+# ADIÇÃO / REMOÇÃO DE NÓS OCULTOS
+# ------------------------------------------------------------------------------
+# node_add_prob:    chance de inserir um novo nó oculto (divide uma conexão)
+# node_delete_prob: chance de remover um nó oculto e suas conexões
+node_add_prob           = 0.2
+node_delete_prob        = 0.2
+
+# ------------------------------------------------------------------------------
+# ARQUITETURA DA REDE — PARÂMETROS OBRIGATÓRIOS
+# ------------------------------------------------------------------------------
+# *** num_inputs DEVE ser igual a WINDOW_SIZE em src/neat_core/evaluator.py ***
+#
+# num_inputs:  nós de entrada (= tamanho da janela de valores passados)
+# num_outputs: nós de saída   (= 1, pois prevemos o próximo valor)
+# num_hidden:  nós ocultos no genoma inicial (NEAT adiciona mais via mutação)
+num_inputs              = 10
+num_outputs             = 1
+num_hidden              = 0
+
+# ------------------------------------------------------------------------------
+# RESPONSE DE CADA NÓ
+# ------------------------------------------------------------------------------
+# Fator multiplicativo aplicado antes da ativação:
+#   output = activation(bias + response * Σ(weight_i * input_i))
+#
+# Por padrão response=1.0 e é mantido fixo (todas as taxas de mutação = 0).
+# Alterar permite que o NEAT evolua o "ganho" de cada nó individualmente.
+response_init_mean      = 1.0
+response_init_stdev     = 0.0
+response_init_type      = gaussian
+response_max_value      = 30.0
+response_min_value      = -30.0
+response_mutate_power   = 0.0
+response_mutate_rate    = 0.0
+response_replace_rate   = 0.0
+
+# ------------------------------------------------------------------------------
+# PESOS DAS CONEXÕES
+# ------------------------------------------------------------------------------
+# weight_init_mean / weight_init_stdev: distribuição inicial dos pesos
+# weight_init_type:   'gaussian' ou 'uniform'
+# weight_min_value / weight_max_value: limites hard (clamped após mutação)
+# weight_mutate_power:  desvio padrão do passo de mutação gaussiana
+# weight_mutate_rate:   probabilidade de o peso ser perturbado por geração
+# weight_replace_rate:  probabilidade de o peso ser substituído por valor novo
+weight_init_mean        = 0.0
+weight_init_stdev       = 1.0
+weight_init_type        = gaussian
+weight_max_value        = 30.0
+weight_min_value        = -30.0
+weight_mutate_power     = 0.5
+weight_mutate_rate      = 0.8
+weight_replace_rate     = 0.1
+
+
+# ==============================================================================
+[DefaultSpeciesSet]
+# ==============================================================================
+
+# Limiar de distância genética para manter dois genomas na mesma espécie.
+# Menor → especiação mais rígida (mais espécies menores)
+# Maior → especiação mais frouxa (menos espécies maiores)
+#
+# Regra prática:
+#   - Se há poucas espécies (1-2): diminua este valor
+#   - Se há muitas espécies pequenas: aumente este valor
+compatibility_threshold = 3.0
+
+
+# ==============================================================================
+[DefaultStagnation]
+# ==============================================================================
+
+# Função usada para medir o fitness de uma espécie:
+#   max, min, mean, median
+species_fitness_func = max
+
+# Número de gerações sem melhoria antes de uma espécie ser eliminada.
+# Espécies que não evoluem liberam recursos para novas.
+max_stagnation       = 20
+
+# Número de "top espécies" que nunca são eliminadas por estagnação.
+# Garante que as melhores espécies sobrevivam mesmo sem melhorar.
+species_elitism      = 2
+
+
+# ==============================================================================
+[DefaultReproduction]
+# ==============================================================================
+
+# elitism:            número de melhores genomas copiados intactos para a
+#                     próxima geração (sem mutação). Preserva os melhores.
+# survival_threshold: fração de cada espécie que pode se reproduzir.
+#                     0.2 → só os 20% melhores de cada espécie geram filhos.
+# min_species_size:   tamanho mínimo para uma espécie participar da reprodução.
+elitism            = 2
+survival_threshold = 0.2
+min_species_size   = 2
+"""
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Gera um arquivo de configuração do NEAT com todos os parâmetros documentados.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default="config/neat.cfg",
+        help="Caminho do arquivo de saída (padrão: config/neat.cfg)",
+    )
+    parser.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Sobrescreve o arquivo mesmo se já existir",
+    )
+    args = parser.parse_args()
+
+    output = Path(args.output)
+
+    if output.exists() and not args.force:
+        print(f"Arquivo já existe: {output}")
+        print("Use --force para sobrescrever.")
+        return
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(CONFIG_TEMPLATE, encoding="utf-8")
+
+    print(f"Config gerada em: {output}")
+    print()
+    print("Próximos passos:")
+    print("  1. Ajuste num_inputs para coincidir com WINDOW_SIZE em evaluator.py")
+    print("  2. Ajuste pop_size e fitness_threshold conforme seus experimentos")
+    print("  3. Experimente activation_options (tanh, relu, sigmoid, sin, etc.)")
+    print("  4. Para desabilitar parada antecipada: no_fitness_termination = True")
+
+
+if __name__ == "__main__":
+    main()
